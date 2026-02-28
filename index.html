@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CalTrack - 卡路里追踪</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            text-align: center;
+        }
+
+        .summary-item h3 {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .summary-item .value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .summary-item.intake .value {
+            color: #e74c3c;
+        }
+
+        .summary-item.burn .value {
+            color: #27ae60;
+        }
+
+        .summary-item.net .value {
+            color: #3498db;
+        }
+
+        .form-section {
+            margin-bottom: 20px;
+        }
+
+        .form-section h2 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.3em;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            min-width: 120px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .records {
+            margin-top: 20px;
+        }
+
+        .records h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .record-list {
+            list-style: none;
+        }
+
+        .record-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .record-item:last-child {
+            border-bottom: none;
+        }
+
+        .record-info {
+            flex: 1;
+        }
+
+        .record-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .record-detail {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .record-calories {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #667eea;
+        }
+
+        .record-delete {
+            background: #e74c3c;
+            padding: 8px 15px;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .empty {
+            text-align: center;
+            color: #999;
+            padding: 30px;
+        }
+
+        @media (max-width: 600px) {
+            .summary {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .form-row {
+                flex-direction: column;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍽️ CalTrack</h1>
+
+        <div class="card">
+            <div class="summary">
+                <div class="summary-item intake">
+                    <h3>今日摄入</h3>
+                    <div class="value" id="todayIntake">0</div>
+                </div>
+                <div class="summary-item burn">
+                    <h3>今日消耗</h3>
+                    <div class="value" id="todayBurn">0</div>
+                </div>
+                <div class="summary-item net">
+                    <h3>净摄入</h3>
+                    <div class="value" id="todayNet">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('food')">🍔 添加食物</button>
+                <button class="tab" onclick="switchTab('exercise')">🏃 添加运动</button>
+            </div>
+
+            <div class="form-section" id="foodForm">
+                <h2>添加食物摄入</h2>
+                <div class="form-row">
+                    <input type="text" id="foodName" placeholder="食物名称 (如: 鸡胸肉)">
+                    <input type="text" id="foodAmount" placeholder="数量 (如: 150g)">
+                    <input type="number" id="foodCalories" placeholder="卡路里" min="0">
+                    <button onclick="addFood()">添加</button>
+                </div>
+            </div>
+
+            <div class="form-section" id="exerciseForm" style="display: none;">
+                <h2>添加运动消耗</h2>
+                <div class="form-row">
+                    <input type="text" id="exerciseType" placeholder="运动类型 (如: 跑步)">
+                    <input type="number" id="exerciseDuration" placeholder="时长 (分钟)" min="0">
+                    <input type="number" id="exerciseCalories" placeholder="消耗卡路里" min="0">
+                    <button onclick="addExercise()">添加</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="records">
+                <h3>📝 今日记录</h3>
+                <ul class="record-list" id="recordList"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 数据存储
+        const STORAGE_KEY = 'caltrack_data';
+
+        function getData() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : { intake: [], exercise: [] };
+        }
+
+        function saveData(data) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function getToday() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        // 切换标签页
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            document.getElementById('foodForm').style.display = tab === 'food' ? 'block' : 'none';
+            document.getElementById('exerciseForm').style.display = tab === 'exercise' ? 'block' : 'none';
+        }
+
+        // 添加食物
+        function addFood() {
+            const name = document.getElementById('foodName').value.trim();
+            const amount = document.getElementById('foodAmount').value.trim();
+            const calories = parseInt(document.getElementById('foodCalories').value);
+
+            if (!name || !amount || !calories) {
+                alert('请填写完整信息');
+                return;
+            }
+
+            const data = getData();
+            data.intake.push({
+                id: Date.now(),
+                date: getToday(),
+                name,
+                amount,
+                calories,
+                time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+            });
+
+            saveData(data);
+            render();
+
+            // 清空表单
+            document.getElementById('foodName').value = '';
+            document.getElementById('foodAmount').value = '';
+            document.getElementById('foodCalories').value = '';
+        }
+
+        // 添加运动
+        function addExercise() {
+            const type = document.getElementById('exerciseType').value.trim();
+            const duration = parseInt(document.getElementById('exerciseDuration').value);
+            const calories = parseInt(document.getElementById('exerciseCalories').value);
+
+            if (!type || !duration || !calories) {
+                alert('请填写完整信息');
+                return;
+            }
+
+            const data = getData();
+            data.exercise.push({
+                id: Date.now(),
+                date: getToday(),
+                type,
+                duration,
+                calories,
+                time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+            });
+
+            saveData(data);
+            render();
+
+            // 清空表单
+            document.getElementById('exerciseType').value = '';
+            document.getElementById('exerciseDuration').value = '';
+            document.getElementById('exerciseCalories').value = '';
+        }
+
+        // 删除记录
+        function deleteRecord(type, id) {
+            if (!confirm('确定删除这条记录吗？')) return;
+
+            const data = getData();
+            if (type === 'intake') {
+                data.intake = data.intake.filter(r => r.id !== id);
+            } else {
+                data.exercise = data.exercise.filter(r => r.id !== id);
+            }
+            saveData(data);
+            render();
+        }
+
+        // 渲染界面
+        function render() {
+            const data = getData();
+            const today = getToday();
+
+            // 今日数据
+            const todayIntake = data.intake.filter(r => r.date === today);
+            const todayExercise = data.exercise.filter(r => r.date === today);
+
+            const totalIntake = todayIntake.reduce((sum, r) => sum + r.calories, 0);
+            const totalBurn = todayExercise.reduce((sum, r) => sum + r.calories, 0);
+
+            document.getElementById('todayIntake').textContent = totalIntake;
+            document.getElementById('todayBurn').textContent = totalBurn;
+            document.getElementById('todayNet').textContent = totalIntake - totalBurn;
+
+            // 记录列表
+            const recordList = document.getElementById('recordList');
+            const allRecords = [
+                ...todayIntake.map(r => ({ ...r, type: 'intake', name: r.name, detail: r.amount })),
+                ...todayExercise.map(r => ({ ...r, type: 'exercise', name: r.type, detail: `${r.duration}分钟` }))
+            ].sort((a, b) => b.id - a.id);
+
+            if (allRecords.length === 0) {
+                recordList.innerHTML = '<div class="empty">今天还没有记录，快去添加吧！</div>';
+            } else {
+                recordList.innerHTML = allRecords.map(r => `
+                    <li class="record-item">
+                        <div class="record-info">
+                            <div class="record-name">${r.type === 'intake' ? '🍽️' : '🏃'} ${r.name}</div>
+                            <div class="record-detail">${r.detail} · ${r.time}</div>
+                        </div>
+                        <div class="record-calories">${r.calories} kcal</div>
+                        <button class="record-delete" onclick="deleteRecord('${r.type}', ${r.id})">删除</button>
+                    </li>
+                `).join('');
+            }
+        }
+
+        // 初始化
+        render();
+    </script>
+</body>
+</html>
