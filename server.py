@@ -15,7 +15,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Obsidian Vault 路径（iCloud Drive）
-VAULT_PATH = '/Users/starktony/Library/Mobile Documents/iCloud~md~obsidian/Documents/SillyIsSmart'
+VAULT_PATH = '/Users/starktony/Library/Mobile Documents/iCloud~md~obsidian/Documents/SillyIsSmart/Projects/CalTrack'
 DATA_FILE = os.path.join(VAULT_PATH, 'CalTrack 记录.md')
 JSON_DATA_FILE = os.path.join(VAULT_PATH, '.caltrack_data.json')
 
@@ -164,11 +164,11 @@ if __name__ == '__main__':
     update_markdown()
 
     print('\n🚀 CalTrack 服务器启动中...')
-    print('📱 在手机浏览器中访问: http://<你的电脑IP>:9000')
-    print('🖥️  在电脑浏览器中访问: http://localhost:9000')
+    print('📱 在手机浏览器中访问: http://<你的电脑IP>:9999')
+    print('🖥️  在电脑浏览器中访问: http://localhost:9999')
     print(f'📂 Obsidian Vault: {VAULT_PATH}')
     print(f'📄 数据文件: {DATA_FILE}')
     print(f'📦 JSON 备份: {JSON_DATA_FILE}')
     print('⏹️  按 Ctrl+C 停止服务器\n')
 
-    app.run(host='0.0.0.0', port=9000, debug=False)
+    app.run(host='0.0.0.0', port=9999, debug=False)
