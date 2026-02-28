@@ -117,6 +117,11 @@
             transform: translateY(0);
         }
 
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .records {
             margin-top: 20px;
         }
@@ -197,6 +202,32 @@
             padding: 30px;
         }
 
+        .status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+        }
+
         @media (max-width: 600px) {
             .summary {
                 grid-template-columns: 1fr;
@@ -217,19 +248,21 @@
     <div class="container">
         <h1>🍽️ CalTrack</h1>
 
+        <div id="status"></div>
+
         <div class="card">
             <div class="summary">
                 <div class="summary-item intake">
                     <h3>今日摄入</h3>
-                    <div class="value" id="todayIntake">0</div>
+                    <div class="value" id="todayIntake">-</div>
                 </div>
                 <div class="summary-item burn">
                     <h3>今日消耗</h3>
-                    <div class="value" id="todayBurn">0</div>
+                    <div class="value" id="todayBurn">-</div>
                 </div>
                 <div class="summary-item net">
                     <h3>净摄入</h3>
-                    <div class="value" id="todayNet">0</div>
+                    <div class="value" id="todayNet">-</div>
                 </div>
             </div>
         </div>
@@ -246,7 +279,7 @@
                     <input type="text" id="foodName" placeholder="食物名称 (如: 鸡胸肉)">
                     <input type="text" id="foodAmount" placeholder="数量 (如: 150g)">
                     <input type="number" id="foodCalories" placeholder="卡路里" min="0">
-                    <button onclick="addFood()">添加</button>
+                    <button onclick="addFood()" id="addFoodBtn">添加</button>
                 </div>
             </div>
 
@@ -256,7 +289,7 @@
                     <input type="text" id="exerciseType" placeholder="运动类型 (如: 跑步)">
                     <input type="number" id="exerciseDuration" placeholder="时长 (分钟)" min="0">
                     <input type="number" id="exerciseCalories" placeholder="消耗卡路里" min="0">
-                    <button onclick="addExercise()">添加</button>
+                    <button onclick="addExercise()" id="addExerciseBtn">添加</button>
                 </div>
             </div>
         </div>
@@ -264,26 +297,47 @@
         <div class="card">
             <div class="records">
                 <h3>📝 今日记录</h3>
-                <ul class="record-list" id="recordList"></ul>
+                <div id="loading" class="loading">加载中...</div>
+                <ul class="record-list" id="recordList" style="display: none;"></ul>
             </div>
         </div>
     </div>
 
     <script>
-        // 数据存储
-        const STORAGE_KEY = 'caltrack_data';
+        const API_BASE = window.location.origin + '/api';
 
-        function getData() {
-            const data = localStorage.getItem(STORAGE_KEY);
-            return data ? JSON.parse(data) : { intake: [], exercise: [] };
-        }
-
-        function saveData(data) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        }
-
+        // 获取 API 地址
         function getToday() {
             return new Date().toISOString().split('T')[0];
+        }
+
+        function getTime() {
+            return new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // 显示状态消息
+        function showStatus(message, type = 'success') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+            setTimeout(() => {
+                status.className = 'status';
+            }, 3000);
+        }
+
+        // 获取数据
+        async function fetchAPI(url, options = {}) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                showStatus('连接服务器失败，请检查网络', 'error');
+                return null;
+            }
         }
 
         // 切换标签页
@@ -296,7 +350,7 @@
         }
 
         // 添加食物
-        function addFood() {
+        async function addFood() {
             const name = document.getElementById('foodName').value.trim();
             const amount = document.getElementById('foodAmount').value.trim();
             const calories = parseInt(document.getElementById('foodCalories').value);
@@ -306,27 +360,34 @@
                 return;
             }
 
-            const data = getData();
-            data.intake.push({
-                id: Date.now(),
-                date: getToday(),
-                name,
-                amount,
-                calories,
-                time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+            const btn = document.getElementById('addFoodBtn');
+            btn.disabled = true;
+
+            const result = await fetchAPI(API_BASE + '/intake', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    date: getToday(),
+                    name,
+                    amount,
+                    calories,
+                    time: getTime()
+                })
             });
 
-            saveData(data);
-            render();
+            btn.disabled = false;
 
-            // 清空表单
-            document.getElementById('foodName').value = '';
-            document.getElementById('foodAmount').value = '';
-            document.getElementById('foodCalories').value = '';
+            if (result && result.success) {
+                showStatus('添加成功！');
+                document.getElementById('foodName').value = '';
+                document.getElementById('foodAmount').value = '';
+                document.getElementById('foodCalories').value = '';
+                render();
+            }
         }
 
         // 添加运动
-        function addExercise() {
+        async function addExercise() {
             const type = document.getElementById('exerciseType').value.trim();
             const duration = parseInt(document.getElementById('exerciseDuration').value);
             const calories = parseInt(document.getElementById('exerciseCalories').value);
@@ -336,45 +397,52 @@
                 return;
             }
 
-            const data = getData();
-            data.exercise.push({
-                id: Date.now(),
-                date: getToday(),
-                type,
-                duration,
-                calories,
-                time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+            const btn = document.getElementById('addExerciseBtn');
+            btn.disabled = true;
+
+            const result = await fetchAPI(API_BASE + '/exercise', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    date: getToday(),
+                    type,
+                    duration,
+                    calories,
+                    time: getTime()
+                })
             });
 
-            saveData(data);
-            render();
+            btn.disabled = false;
 
-            // 清空表单
-            document.getElementById('exerciseType').value = '';
-            document.getElementById('exerciseDuration').value = '';
-            document.getElementById('exerciseCalories').value = '';
+            if (result && result.success) {
+                showStatus('添加成功！');
+                document.getElementById('exerciseType').value = '';
+                document.getElementById('exerciseDuration').value = '';
+                document.getElementById('exerciseCalories').value = '';
+                render();
+            }
         }
 
         // 删除记录
-        function deleteRecord(type, id) {
+        async function deleteRecord(type, id) {
             if (!confirm('确定删除这条记录吗？')) return;
 
-            const data = getData();
-            if (type === 'intake') {
-                data.intake = data.intake.filter(r => r.id !== id);
-            } else {
-                data.exercise = data.exercise.filter(r => r.id !== id);
+            const result = await fetchAPI(API_BASE + '/' + type + '/' + id, {
+                method: 'DELETE'
+            });
+
+            if (result && result.success) {
+                showStatus('删除成功！');
+                render();
             }
-            saveData(data);
-            render();
         }
 
         // 渲染界面
-        function render() {
-            const data = getData();
-            const today = getToday();
+        async function render() {
+            const data = await fetchAPI(API_BASE + '/data');
+            if (!data) return;
 
-            // 今日数据
+            const today = getToday();
             const todayIntake = data.intake.filter(r => r.date === today);
             const todayExercise = data.exercise.filter(r => r.date === today);
 
@@ -385,12 +453,13 @@
             document.getElementById('todayBurn').textContent = totalBurn;
             document.getElementById('todayNet').textContent = totalIntake - totalBurn;
 
-            // 记录列表
             const recordList = document.getElementById('recordList');
             const allRecords = [
                 ...todayIntake.map(r => ({ ...r, type: 'intake', name: r.name, detail: r.amount })),
                 ...todayExercise.map(r => ({ ...r, type: 'exercise', name: r.type, detail: `${r.duration}分钟` }))
             ].sort((a, b) => b.id - a.id);
+
+            document.getElementById('loading').style.display = 'none';
 
             if (allRecords.length === 0) {
                 recordList.innerHTML = '<div class="empty">今天还没有记录，快去添加吧！</div>';
